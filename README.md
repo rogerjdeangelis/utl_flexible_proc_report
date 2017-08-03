@@ -43,7 +43,7 @@ Alternative to tabulate to create a clinical report
     ```              Tables type , year;  ```
     ```              weight sales;  ```
     ```    ```
-    ```          3   * DOW (colsums in last row;  ```
+    ```          3   * DOW (colsums are  in last row - create sum(pct)  ```
     ```                 do until(last.region);  ```
     ```                  set wantpre;  ```
     ```                      by country region;  ```
