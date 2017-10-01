@@ -1,10 +1,113 @@
 
- _ __ ___   __ _| | _____    __| | __ _| |_ __ _
-| '_ ` _ \ / _` | |/ / _ \  / _` |/ _` | __/ _` |
-| | | | | | (_| |   <  __/ | (_| | (_| | || (_| |
-|_| |_| |_|\__,_|_|\_\___|  \__,_|\__,_|\__\__,_|
+A flexible proc report: Moving titles and page numbering inside the body(border box) of 'proc report'
+
+see for rtf output
+https://www.dropbox.com/s/jb8koydt1pai4nx/carsales.rtf?dl=0
+
+"I need to do this: All titles and page numbering
+include in RTF body file, not just like headers,
+Page numbering should be on the top and left. Please help."
+
+I left 'footnotes out but it is easy to do 'and compute after to move footnotes inside
+the box.
+
+
+see
+https://communities.sas.com/t5/ODS-and-Base-Reporting/Proc-Report/m-p/400102
+
+
+  WORKING CODE (you can use a macro instaead of DOSUBL)
+  ============
+
+    proc report data=want(where=(page=&pge)) nowd split="#" missing;
+       cols
+         ( "^S={just=r font_size=9pt} Page &pge of &pgemax"
+         blankline
+          ("Country: &country Region: Region Observed and Predicted Car Sales for 1993-1994"
+           ("Geography"
+           country
+           region )
+           type
+           ( "Sales Years"
+           __1993
+           __1994
+           __sum
+           )
+        )
+
+
+HAVE  (from sashelp.prdsale)
+=============================
+
+  WORK.HAVSRT total obs=2,880
+
+    Obs    COUNTRY    REGION    YEAR    TYPE         SALES
+
+      1    CANADA      EAST     1993    Actual        925
+      2    CANADA      EAST     1993    Predicted     850
+      3    CANADA      EAST     1993    Actual        999
+      4    CANADA      EAST     1993    Predicted     297
+      5    CANADA      EAST     1993    Actual        608
+      6    CANADA      EAST     1993    Predicted     846
+      7    CANADA      EAST     1993    Actual        642
+      8    CANADA      EAST     1993    Predicted     533
+    ...
+
+WANT
+====
+
+
+ +---------------------------------------------------------------------------------------------------------------------------+
+ |                                                                                                               Page 1 of 6 |
+ |                              Country: U.S.A. Region: Region Observed and Predicted Car Sales for 1993-1994                |
+ |                                                                                                                           |
+ |       Geography         Data                                                   Sales Years                                |
+ |                                                                                                                           |
+ | Country     Region      Type       USAActual1993                     USAActual1994                     USAActual          |
+ |                                                                                                                           |
+ | U.S.A.      WEST        Actual     $60,826 (50.1%)                   $58,294 (49.0%)                   $119,120 (49.6%)   |
+ |                         Predicted  $60,484 (49.9%)                   $60,651 (51.0%)                   $121,135 (50.4%)   |
+ | U.S.A.      WEST        Sum        $121,310 (100.0%)                 $118,945 (100.0%)                 $240,255 (100.0%)  |
+ |                                                                                                                           |
+ +---------------------------------------------------------------------------------------------------------------------------+
+
+  ....
+
+
+ +---------------------------------------------------------------------------------------------------------------------------+
+ |                                                                                                              Page 6 of 6  |
+ |                              Country: Germany Region: Region Observed and Predicted Car Sales for 1993-1994               |
+ |                                                                                                                           |
+ |       Geography         Data                                                   Sales Years                                |
+ |                                                                                                                           |
+ | Country     Region      Type       GBRActual1993                     GBRActual1994                     GBRActual          |
+ |                                                                                                                           |
+ | Germany     WEST        Actual     $60,826 (50.1%)                   $58,294 (49.0%)                   $119,120 (49.6%)   |
+ |                         Predicted  $60,484 (49.9%)                   $60,651 (51.0%)                   $121,135 (50.4%)   |
+ | Germany     WEST        Sum        $121,310 (100.0%)                 $118,945 (100.0%)                 $240,255 (100.0%)  |
+ |                                                                                                                           |
+ +---------------------------------------------------------------------------------------------------------------------------+
+
+*                _               _       _
+ _ __ ___   __ _| | _____     __| | __ _| |_ __ _
+| '_ ` _ \ / _` | |/ / _ \   / _` |/ _` | __/ _` |
+| | | | | | (_| |   <  __/  | (_| | (_| | || (_| |
+|_| |_| |_|\__,_|_|\_\___|   \__,_|\__,_|\__\__,_|
 
 ;
+ proc datasets lib=work;
+ delete have;
+ run;quit;
+
+*just in case - you do not have to do thsi;
+ %symdel
+    CANADAEAST CANADAEAST1993 CANADAEAST1994 CANADAWEST CANADAWEST1993
+    CANADAWEST1994 GERMANYEAST GERMANYEAST1993 GERMANYEAST1994
+    GERMANYWEST GERMANYWEST1993 GERMANYWEST1994 NYEARS PGE PGEMAX
+    REGION TOTAL TYPE USAEAST USAEAST1993 USAEAST1994 USAWEST USAWEST1993
+    USAWEST1994 YEARS YR1993 YR1994 / nowarn;
+
+%utlkill(d:/rtf/carsales.rtf); * deletes the rtf output if it exists;
 
 data have;
    length yearchr $50;
@@ -25,11 +128,9 @@ data have;
    end;
    keep country region year type sales;
 run;quit;
-
 proc sort data=have out=havsrt;
 by country region;
 run;quit;
-
 *          _       _   _
  ___  ___ | |_   _| |_(_) ___  _ __
 / __|/ _ \| | | | | __| |/ _ \| '_ \
@@ -37,6 +138,8 @@ run;quit;
 |___/\___/|_|\__,_|\__|_|\___/|_| |_|
 
 ;
+
+* you need to compile the template on the end first;
 
 Ods Exclude All;
 Ods Output Observed=wantpre(Rename=Label=type);
@@ -94,7 +197,7 @@ proc sql;
 
 %put _all_;
 
-options nodate nonumber orientation=landscape ls=171 ps-65;
+options nodate nonumber orientation=landscape ls=255 ps=65;
 title;footnote;
 %utl_rtflan100;
 ods escapechar='^';
@@ -102,59 +205,61 @@ ods listing close;
 ods rtf file="d:/rtf/carsales.rtf" style=utl_rtflan100 notoc_data;
 data _null_;
 
-   length ctytyp $32;
+   length ctytyp yr1993 yr1994 total $96;
    retain pge 0;
    set want;
    by country region;
    call symputx("country",country);
    call symputx("region",region);
    call symputx("type",type);
-   ctytyp=cats(compress(country,"."),type);
+   ctytyp=cats(compress(country," _."),type);
+   put ctytyp;
    if first.region then do;
 
       pge=pge+1;
-      call symputx('yr1993',symget(cats(ctytyp,'1993')));
-      call symputx('yr1994',symget(cats(ctytyp,'1994')));
-      call symputx('total ',symget(cats(ctytyp)));
+      yr1993=cats(ctytyp,'1993');
+      yr1994=cats(ctytyp,'1994');
+      total =cats(ctytyp);
+
+
+      call symputx('yr1993',yr1993);
+      call symputx('yr1994',yr1994);
+      call symputx('total ',total);
       call symputx('pge',put(pge,2.));
 
       rc=dosubl('
           proc report data=want(where=(page=&pge)) nowd split="#" missing;
              cols
+               ( "^S={just=r font_size=9pt} Page &pge of &pgemax"
                blankline
-               ( "Country: &country Region: Region Observed and Predicted Car Sales for 1993-1994"
-                ("Geography"
-                country
-                region )
-                type
-                ( "Sales Years"
-                __1993
-                __1994
-                __sum
-                )
+                ("Country: &country Region: Region Observed and Predicted Car Sales for 1993-1994"
+                 ("Geography"
+                 country
+                 region )
+                 type
+                 ( "Sales Years"
+                 __1993
+                 __1994
+                 __sum
+                 )
+              )
               );
-              define blankline/ order    noprint;
+              define blankline/ order noprint;
               define country  / order    "Country"      style={cellwidth=13%  just=r } order=data;
               define region   / order    "Region"       style={cellwidth=10%  just=r } order=data;
               define type     / display  "Data#Type"    style={cellwidth=12%  just=c } order=data;
               define __1993   / display  "&yr1993"      style={cellwidth=20%  just=c } order=data;
               define __1994   / display  "&yr1994"      style={cellwidth=20%  just=c } order=data;
               define __sum    / display  "&total"       style={cellwidth=20%  just=c } order=data;
-              *break after blankline / style={just=l};
-              compute after blankline ;
-                if blankline=1 then len=2;
-                else len=0;
-                hiddondragon="  ";
-                line hiddondragon  $varying2. len;
-              endcomp;
           run;quit;
-          ods rtf text="^S={outputwidth=100% just=r font_size=9pt} Page &pge of &pgemax";
           ods rtf text="^S={outputwidth=100% just=l font_size=8pt font_style=italic}  {from &country Statistics}";
           ods rtf text="^S={outputwidth=100% just=l font_size=8pt font_style=italic}  {see Roger  DeAngelis}";
           ods rtf text="^S={outputwidth=100% just=l font_size=8pt font_style=italic}  {&sysdate &systime}";
           run;quit;
         run;quit;
       ');
+
+
      end;
 run;quit;
 
@@ -311,6 +416,5 @@ run;
 quit;
 
 %Mend utl_rtflan100;
-
 
 
